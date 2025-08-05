@@ -24,12 +24,8 @@ public class PartidaController {
     }
 
     @GetMapping("/partida")
-    public List<Partida> getPartidas(String nome) {
-        if (nome == null) {
-            return partidaService.todos();
-        } else {
-            return partidaService.buscarPor(nome);
-        }
+    public List<Partida> getPartidas() {
+        return partidaService.todos();
     }
     @GetMapping("{id}")
     public ResponseEntity<Partida> buscaPor(@PathVariable Integer id) {

@@ -26,11 +26,6 @@ public class PartidaService {
     public Optional<Partida> buscarPor(Integer id) {
         return partidaRepository.findById(id);
     }
-
-    public List<Partida> buscarPor(String nome) {
-        return partidaRepository.findByNomeContaining(nome);
-    }
-
     @Transactional
     public Partida salvar(Partida partida) {
         return partidaRepository.save(partida);
