@@ -1,5 +1,8 @@
 package edu.ifma.dcomp.lpweb.campeonato.controller;
 
+import edu.ifma.dcomp.lpweb.campeonato.dto.input.PartidaInputDTO;
+import edu.ifma.dcomp.lpweb.campeonato.dto.output.PartidaDTO;
+import edu.ifma.dcomp.lpweb.campeonato.mapper.PartidaMapper;
 import edu.ifma.dcomp.lpweb.campeonato.model.Partida;
 import edu.ifma.dcomp.lpweb.campeonato.services.PartidaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,42 +19,51 @@ import java.util.Optional;
 public class PartidaController {
 
     private final PartidaService partidaService;
+    private final PartidaMapper partidaMapper;
 
     @Autowired
-    public PartidaController(PartidaService partidaService) {
+    public PartidaController(PartidaService partidaService, PartidaMapper partidaMapper) {
         this.partidaService = partidaService;
+        this.partidaMapper = partidaMapper;
     }
 
     @GetMapping("/partida")
-    public List<Partida> getPartidas() {
-        return partidaService.todos();
+    public List<PartidaDTO> getPartidas() {
+        return partidaMapper.toListDTO(partidaService.todos());
     }
     @GetMapping("{id}")
-    public ResponseEntity<Partida> buscaPor(@PathVariable Integer id) {
+    public ResponseEntity<PartidaDTO> buscaPor(@PathVariable Integer id) {
         return partidaService.buscarPor(id)
-                .map(ResponseEntity::ok)
+                .map(partida -> ResponseEntity.ok(partidaMapper.toDTO(partida)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<Partida> cadastro(@RequestBody Partida partida, UriComponentsBuilder builder) {
+    public ResponseEntity<PartidaDTO> cadastro(@RequestBody PartidaInputDTO partidaInputDTO, UriComponentsBuilder builder) {
 
+        final Partida partida = partidaMapper.toEntity(partidaInputDTO);
         final Partida partidaSalva = partidaService.salvar(partida);
 
         final URI uri = builder
                 .path("/partidas/{id}")
                 .buildAndExpand(partidaSalva.getId()).toUri();
-        return ResponseEntity.created(uri).body(partidaSalva);
+        return ResponseEntity.created(uri).body(partidaMapper.toDTO(partidaSalva));
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<Partida> atualiza(@PathVariable Integer id, @RequestBody Partida partida) {
+    public ResponseEntity<PartidaDTO> atualiza(@PathVariable Integer id, @RequestBody PartidaInputDTO partidaInputDTO) {
         if (partidaService.naoExistePartida(id)) {
             return ResponseEntity.notFound().build();
         } else {
-            partida.setId(id);
-            Partida partidaAtualizada = partidaService.salvar(partida);
-            return ResponseEntity.ok(partidaAtualizada);
+            Optional<Partida> optionalPartida = partidaService.buscarPor(id);
+            if (optionalPartida.isPresent()) {
+                Partida partida = optionalPartida.get();
+                partidaMapper.updateEntity(partidaInputDTO, partida);
+                partida.setId(id);
+                Partida partidaAtualizada = partidaService.salvar(partida);
+                return ResponseEntity.ok(partidaMapper.toDTO(partidaAtualizada));
+            }
+            return ResponseEntity.notFound().build();
         }
     }
 

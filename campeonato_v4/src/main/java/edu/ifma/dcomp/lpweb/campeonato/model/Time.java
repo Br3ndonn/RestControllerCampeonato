@@ -1,5 +1,6 @@
 package edu.ifma.dcomp.lpweb.campeonato.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -24,6 +25,7 @@ public class Time {
     @OneToOne(mappedBy = "time", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Estadio estadio;
 
+    @JsonIgnore
     @ManyToMany
     @JoinTable(
         name = "campeonato_time",
@@ -32,10 +34,12 @@ public class Time {
     )
     private Set<Campeonato> campeonatos = new HashSet<>();
 
+    @JsonIgnore
     @OneToMany(mappedBy = "timeMandante", fetch = FetchType.LAZY)
     private Set<Partida> partidasComoMandante = new HashSet<>();
 
     // A set for all games where this team was the away team (visitante)
+    @JsonIgnore
     @OneToMany(mappedBy = "timeVisitante", fetch = FetchType.LAZY)
     private Set<Partida> partidasComoVisitante = new HashSet<>();
 

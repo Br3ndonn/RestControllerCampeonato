@@ -1,6 +1,7 @@
 package edu.ifma.dcomp.lpweb.campeonato.services;
 
 import edu.ifma.dcomp.lpweb.campeonato.model.Campeonato;
+import edu.ifma.dcomp.lpweb.campeonato.model.Time;
 import edu.ifma.dcomp.lpweb.campeonato.repository.CampeonatoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -8,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class CampeonatoService {
@@ -43,5 +45,10 @@ public class CampeonatoService {
 
     public boolean naoExisteCampeonato(Integer id) {
         return !campeonatoRepository.existsById(id);
+    }
+
+    public Optional<Set<Time>> buscarTimesPorCampeonato(Integer campeonatoId) {
+        Optional<Campeonato> campeonatoOpt = campeonatoRepository.findById(campeonatoId);
+        return campeonatoOpt.map(Campeonato::getTimes);
     }
 }

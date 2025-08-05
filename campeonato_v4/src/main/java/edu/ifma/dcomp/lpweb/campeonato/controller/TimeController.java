@@ -1,4 +1,7 @@
 package edu.ifma.dcomp.lpweb.campeonato.controller;
+import edu.ifma.dcomp.lpweb.campeonato.dto.input.TimeInputDTO;
+import edu.ifma.dcomp.lpweb.campeonato.dto.output.TimeDTO;
+import edu.ifma.dcomp.lpweb.campeonato.mapper.TimeMapper;
 import edu.ifma.dcomp.lpweb.campeonato.model.Time;
 import edu.ifma.dcomp.lpweb.campeonato.services.TimeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,47 +17,56 @@ import java.util.Optional;
 public class TimeController {
 
     private final TimeService timeService;
+    private final TimeMapper timeMapper;
 
     @Autowired
-    public TimeController(TimeService timeService) {
+    public TimeController(TimeService timeService, TimeMapper timeMapper) {
         this.timeService = timeService;
+        this.timeMapper = timeMapper;
     }
 
     @GetMapping("/time")
-    public List<Time> getTimes(String nome) {
+    public List<TimeDTO> getTimes(String nome) {
         if (nome == null) {
-            return timeService.todos();
+            return timeMapper.toListDTO(timeService.todos());
         } else {
-            return timeService.buscarPor(nome);
+            return timeMapper.toListDTO(timeService.buscarPor(nome));
         }
     }
 
     @GetMapping("{id}")
-    public ResponseEntity<Time> buscaPor(@PathVariable Integer id) {
+    public ResponseEntity<TimeDTO> buscaPor(@PathVariable Integer id) {
         return timeService.buscarPor(id)
-                .map(ResponseEntity::ok)
+                .map(time -> ResponseEntity.ok(timeMapper.toDTO(time)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<Time> cadastro(@RequestBody Time time, UriComponentsBuilder builder) {
+    public ResponseEntity<TimeDTO> cadastro(@RequestBody TimeInputDTO timeInputDTO, UriComponentsBuilder builder) {
 
+        final Time time = timeMapper.toEntity(timeInputDTO);
         final Time timeSalvo = timeService.salvar(time);
 
         final URI uri = builder
                 .path("/times/{id}")
                 .buildAndExpand(timeSalvo.getId()).toUri();
-        return ResponseEntity.created(uri).body(timeSalvo);
+        return ResponseEntity.created(uri).body(timeMapper.toDTO(timeSalvo));
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<Time> atualiza(@PathVariable Integer id, @RequestBody Time time) {
+    public ResponseEntity<TimeDTO> atualiza(@PathVariable Integer id, @RequestBody TimeInputDTO timeInputDTO) {
         if (timeService.naoExisteTime(id)) {
             return ResponseEntity.notFound().build();
-        }else{
-            time.setId(id);
-            Time timeAtualizado = timeService.salvar(time);
-            return ResponseEntity.ok(timeAtualizado);
+        } else {
+            Optional<Time> optionalTime = timeService.buscarPor(id);
+            if (optionalTime.isPresent()) {
+                Time time = optionalTime.get();
+                timeMapper.updateEntity(timeInputDTO, time);
+                time.setId(id);
+                Time timeAtualizado = timeService.salvar(time);
+                return ResponseEntity.ok(timeMapper.toDTO(timeAtualizado));
+            }
+            return ResponseEntity.notFound().build();
         }
     }
 

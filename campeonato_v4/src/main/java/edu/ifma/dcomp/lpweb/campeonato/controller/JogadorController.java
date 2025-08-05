@@ -1,10 +1,11 @@
 package edu.ifma.dcomp.lpweb.campeonato.controller;
 
-
+import edu.ifma.dcomp.lpweb.campeonato.dto.input.JogadorInputDTO;
+import edu.ifma.dcomp.lpweb.campeonato.dto.output.JogadorDTO;
+import edu.ifma.dcomp.lpweb.campeonato.mapper.JogadorMapper;
 import edu.ifma.dcomp.lpweb.campeonato.model.Jogador;
 import edu.ifma.dcomp.lpweb.campeonato.services.JogadorService;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -19,46 +20,55 @@ import java.util.Optional;
 public class JogadorController {
 
     private final JogadorService jogadorService;
+    private final JogadorMapper jogadorMapper;
 
     @Autowired
-    public JogadorController(JogadorService jogadorService) {
+    public JogadorController(JogadorService jogadorService, JogadorMapper jogadorMapper) {
         this.jogadorService = jogadorService;
+        this.jogadorMapper = jogadorMapper;
     }
 
     @GetMapping("/jogador")
-    public List<Jogador> getJogadores(String nome) {
+    public List<JogadorDTO> getJogadores(String nome) {
         if (nome == null) {
-            return jogadorService.todos();
+            return jogadorMapper.toListDTO(jogadorService.todos());
         } else {
-            return jogadorService.buscarPor(nome);
+            return jogadorMapper.toListDTO(jogadorService.buscarPor(nome));
         }
     }
 
     @GetMapping("{id}")
-    public ResponseEntity<Jogador> buscaPor(@PathVariable Integer id) {
+    public ResponseEntity<JogadorDTO> buscaPor(@PathVariable Integer id) {
         return jogadorService.buscarPor(id)
-                .map(ResponseEntity::ok)
+                .map(jogador -> ResponseEntity.ok(jogadorMapper.toDTO(jogador)))
                 .orElse(ResponseEntity.notFound().build());
     }
     @PostMapping
-    public ResponseEntity<Jogador> cadastro(@RequestBody Jogador jogador, UriComponentsBuilder builder) {
+    public ResponseEntity<JogadorDTO> cadastro(@RequestBody JogadorInputDTO jogadorInputDTO, UriComponentsBuilder builder) {
 
+        final Jogador jogador = jogadorMapper.toEntity(jogadorInputDTO);
         final Jogador jogadorSalvo = jogadorService.salvar(jogador);
 
         final URI uri = builder
                 .path("/jogadores/{id}")
                 .buildAndExpand(jogadorSalvo.getId()).toUri();
-        return ResponseEntity.created(uri).body(jogadorSalvo);
+        return ResponseEntity.created(uri).body(jogadorMapper.toDTO(jogadorSalvo));
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<Jogador> atualiza(@PathVariable Integer id, @RequestBody Jogador jogador) {
+    public ResponseEntity<JogadorDTO> atualiza(@PathVariable Integer id, @RequestBody JogadorInputDTO jogadorInputDTO) {
         if (jogadorService.naoExisteJogador(id)) {
             return ResponseEntity.notFound().build();
         } else {
-            jogador.setId(id);
-            Jogador jogadorAtualizado = jogadorService.salvar(jogador);
-            return ResponseEntity.ok(jogadorAtualizado);
+            Optional<Jogador> optionalJogador = jogadorService.buscarPor(id);
+            if (optionalJogador.isPresent()) {
+                Jogador jogador = optionalJogador.get();
+                jogadorMapper.updateEntity(jogadorInputDTO, jogador);
+                jogador.setId(id);
+                Jogador jogadorAtualizado = jogadorService.salvar(jogador);
+                return ResponseEntity.ok(jogadorMapper.toDTO(jogadorAtualizado));
+            }
+            return ResponseEntity.notFound().build();
         }
     }
 

@@ -1,11 +1,11 @@
 package edu.ifma.dcomp.lpweb.campeonato.controller;
 
-
+import edu.ifma.dcomp.lpweb.campeonato.dto.input.EstadioInputDTO;
+import edu.ifma.dcomp.lpweb.campeonato.dto.output.EstadioDTO;
+import edu.ifma.dcomp.lpweb.campeonato.mapper.EstadioMapper;
 import edu.ifma.dcomp.lpweb.campeonato.model.Estadio;
-
 import edu.ifma.dcomp.lpweb.campeonato.services.EstadioService;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -19,46 +19,55 @@ import java.util.Optional;
 public class EstadioController {
 
     private final EstadioService estadioService;
+    private final EstadioMapper estadioMapper;
 
     @Autowired
-    public EstadioController(EstadioService estadioService) {
+    public EstadioController(EstadioService estadioService, EstadioMapper estadioMapper) {
         this.estadioService = estadioService;
+        this.estadioMapper = estadioMapper;
     }
 
     @GetMapping("/estadio")
-    public List<Estadio> getEstadios(String nome) {
+    public List<EstadioDTO> getEstadios(String nome) {
         if (nome == null) {
-            return estadioService.todos();
+            return estadioMapper.toListDTO(estadioService.todos());
         } else {
-            return estadioService.buscarPor(nome);
+            return estadioMapper.toListDTO(estadioService.buscarPor(nome));
         }
     }
 
     @GetMapping("{id}")
-    public ResponseEntity<Estadio> buscaPor(@PathVariable Integer id) {
+    public ResponseEntity<EstadioDTO> buscaPor(@PathVariable Integer id) {
         return estadioService.buscarPor(id)
-                .map(ResponseEntity::ok)
+                .map(estadio -> ResponseEntity.ok(estadioMapper.toDTO(estadio)))
                 .orElse(ResponseEntity.notFound().build());
     }
     @PostMapping
-    public ResponseEntity<Estadio> cadastro(@RequestBody Estadio estadio, UriComponentsBuilder builder) {
+    public ResponseEntity<EstadioDTO> cadastro(@RequestBody EstadioInputDTO estadioInputDTO, UriComponentsBuilder builder) {
 
+        final Estadio estadio = estadioMapper.toEntity(estadioInputDTO);
         final Estadio estadioSalvo = estadioService.salvar(estadio);
 
         final URI uri = builder
                 .path("/estadios/{id}")
                 .buildAndExpand(estadioSalvo.getId()).toUri();
-        return ResponseEntity.created(uri).body(estadioSalvo);
+        return ResponseEntity.created(uri).body(estadioMapper.toDTO(estadioSalvo));
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<Estadio> atualiza(@PathVariable Integer id, @RequestBody Estadio estadio) {
+    public ResponseEntity<EstadioDTO> atualiza(@PathVariable Integer id, @RequestBody EstadioInputDTO estadioInputDTO) {
         if (estadioService.naoExisteEstadio(id)) {
             return ResponseEntity.notFound().build();
         } else {
-            estadio.setId(id);
-            Estadio estadioAtualizado = estadioService.salvar(estadio);
-            return ResponseEntity.ok(estadioAtualizado);
+            Optional<Estadio> optionalEstadio = estadioService.buscarPor(id);
+            if (optionalEstadio.isPresent()) {
+                Estadio estadio = optionalEstadio.get();
+                estadioMapper.updateEntity(estadioInputDTO, estadio);
+                estadio.setId(id);
+                Estadio estadioAtualizado = estadioService.salvar(estadio);
+                return ResponseEntity.ok(estadioMapper.toDTO(estadioAtualizado));
+            }
+            return ResponseEntity.notFound().build();
         }
     }
 
